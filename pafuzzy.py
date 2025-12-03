@@ -12,7 +12,6 @@ st.title("MADM — Pemilihan Web Hosting Murah (WP & TOPSIS)")
 # ---------- config ----------
 PROVIDERS = ["HostA","HostB","HostC","HostD","HostE"]
 
-# KRITIS: Data Krips ini diatur agar sesuai dengan kemungkinan ranking HostB sebagai rank 1.
 # Nilai Cost (C1) diatur ulang ke [100, 80, 80, 80, 100] (Versi Kode Awal Anda)
 # Bobot default dari data: C1=0.30, C2=0.25, C3=0.20, C4=0.15, C5=0.10
 synced_df = pd.DataFrame({

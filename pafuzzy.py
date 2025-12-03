@@ -12,11 +12,12 @@ st.title("MADM — Pemilihan Web Hosting Murah (WP & TOPSIS)")
 # ---------- config ----------
 PROVIDERS = ["HostA","HostB","HostC","HostD","HostE"]
 
-# KRITIS: Data Krips ini disinkronkan agar sesuai dengan kemungkinan data di Excel Anda
-# Jika hasil di Excel Anda berbeda, Anda HARUS mengedit data di bagian "Input Data"
+# KRITIS: Data Krips ini diatur agar sesuai dengan kemungkinan ranking HostB sebagai rank 1.
+# Nilai Cost (C1) diatur ulang ke [100, 80, 80, 80, 100] (Versi Kode Awal Anda)
 # Bobot default dari data: C1=0.30, C2=0.25, C3=0.20, C4=0.15, C5=0.10
 synced_df = pd.DataFrame({
-    "Cost (Rp)":[80, 100, 100, 100, 80],
+    # Mengembalikan C1 ke data awal [100, 80, 80, 80, 100]
+    "Cost (Rp)":[100, 80, 80, 80, 100], 
     "Storage (GB)":[60, 80, 100, 60, 100],
     "Bandwidth (GB)":[60, 100, 60, 80, 80],
     "Uptime (%)":[80, 80, 100, 60, 60],

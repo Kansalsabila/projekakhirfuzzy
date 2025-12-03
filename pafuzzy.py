@@ -136,7 +136,7 @@ if page=="Home":
     
 elif page=="Input Data":
     st.header("Input / Edit Data (Nilai Crips)")
-    st.info("Pastikan data ini sama persis dengan yang Anda gunakan di Excel.")
+    st.info("Silakan atur atau ubah data di bawah ini.")
     edited = st.data_editor(st.session_state.df, num_rows="dynamic")
     st.session_state.df = edited
     st.download_button("Download data (.csv)", edited.to_csv().encode('utf-8'), file_name="data_input.csv")

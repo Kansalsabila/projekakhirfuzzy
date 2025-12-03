@@ -13,11 +13,11 @@ st.title("MADM — Pemilihan Web Hosting Murah (WP & TOPSIS)")
 PROVIDERS = ["HostA","HostB","HostC","HostD","HostE"]
 # Kriteria (nilai crips dari Excel): C1=Cost, C2=Storage, C3=Bandwidth, C4=Uptime, C5=Support
 default_df = pd.DataFrame({
-    "Cost (Rp)":[100, 80, 80, 80, 100],
-    "Storage (GB)":[60, 80, 100, 60, 100],
-    "Bandwidth (GB)":[60, 100, 60, 80, 80],
-    "Uptime (%)":[80, 80, 100, 60, 60],
-    "Support (1-10)":[80, 60, 60, 100, 80]
+    "Cost":[100, 80, 80, 80, 100],
+    "Storage":[60, 80, 100, 60, 100],
+    "Bandwidth":[60, 100, 60, 80, 80],
+    "Uptime":[80, 80, 100, 60, 60],
+    "Support":[80, 60, 60, 100, 80]
 }, index=PROVIDERS)
 
 if "df" not in st.session_state:

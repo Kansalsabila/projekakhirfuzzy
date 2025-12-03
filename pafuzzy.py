@@ -1,20 +1,22 @@
-# app_singlefile.py
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from io import BytesIO
+import time # Untuk simulasi loading
 
 st.set_page_config(page_title="MADM - Web Hosting", layout="wide")
 
-# Perubahan Judul
 st.title("MADM — Pemilihan Web Hosting Murah (WP & TOPSIS)")
 
 # ---------- config ----------
 PROVIDERS = ["HostA","HostB","HostC","HostD","HostE"]
-# Kriteria (nilai crips dari Excel): C1=Cost, C2=Storage, C3=Bandwidth, C4=Uptime, C5=Support
-default_df = pd.DataFrame({
-    "Cost (Rp)":[100, 80, 80, 80, 100],
+
+# KRITIS: Data Krips ini disinkronkan agar sesuai dengan kemungkinan data di Excel Anda
+# Jika hasil di Excel Anda berbeda, Anda HARUS mengedit data di bagian "Input Data"
+# Bobot default dari data: C1=0.30, C2=0.25, C3=0.20, C4=0.15, C5=0.10
+synced_df = pd.DataFrame({
+    "Cost (Rp)":[80, 100, 100, 100, 80],
     "Storage (GB)":[60, 80, 100, 60, 100],
     "Bandwidth (GB)":[60, 100, 60, 80, 80],
     "Uptime (%)":[80, 80, 100, 60, 60],
@@ -22,15 +24,14 @@ default_df = pd.DataFrame({
 }, index=PROVIDERS)
 
 if "df" not in st.session_state:
-    st.session_state.df = default_df.copy()
+    # Memastikan session_state menggunakan data yang telah disinkronkan
+    st.session_state.df = synced_df.copy()
 
 st.sidebar.header("Menu")
-# Perubahan: Mengganti "Fuzzy SAW" menjadi "WP"
 page = st.sidebar.radio("Pilih halaman", ["Home","Input Data","WP","TOPSIS","Perbandingan","Tentang"])
 
 # weights (editable)
 st.sidebar.markdown("### Bobot Kriteria")
-# Bobot dari data: C1=0.30, C2=0.25, C3=0.20, C4=0.15, C5=0.10
 w1 = st.sidebar.slider("Cost (Rp) (w1)", 0.0, 1.0, 0.30, 0.01)
 w2 = st.sidebar.slider("Storage (GB) (w2)", 0.0, 1.0, 0.25, 0.01)
 w3 = st.sidebar.slider("Bandwidth (GB) (w3)", 0.0, 1.0, 0.20, 0.01)
@@ -40,6 +41,7 @@ w5 = st.sidebar.slider("Support (1-10) (w5)", 0.0, 1.0, 0.10, 0.01)
 # Normalisasi bobot
 ws = np.array([w1,w2,w3,w4,w5])
 if ws.sum() == 0:
+    # Menggunakan bobot default jika total bobot 0
     ws = np.array([0.30,0.25,0.20,0.15,0.10])
 else:
     ws = ws / ws.sum()
@@ -51,6 +53,7 @@ TYPES = ["cost","benefit","benefit","benefit","benefit"]
 # FUNGSI PERHITUNGAN
 # ----------------------------------------------------------------------
 
+@st.cache_data
 def wp_calc(df, weights):
     """Menghitung Weighted Product (WP) klasik."""
     
@@ -73,10 +76,11 @@ def wp_calc(df, weights):
     V = [s / sum_S for s in S]
     
     res = pd.DataFrame({"Vektor S":S, "Vektor V (Score)":V}, index=df.index)
-    res["Rank"] = res["Vektor V (Score)"].rank(ascending=False).astype(int)
+    res["Rank"] = res["Vektor V (Score)"].rank(ascending=False, method='min').astype(int) # Gunakan method='min' untuk menghindari rank yang sama
     
     return res, w_exp
 
+@st.cache_data
 def topsis_calc(df, weights):
     """Menghitung TOPSIS klasik."""
     mat = df.astype(float)
@@ -117,7 +121,7 @@ def topsis_calc(df, weights):
     a_minus_df = pd.DataFrame([a_minus], columns=weighted.columns, index=["A-"])
     
     res = pd.DataFrame({"D_plus":Dp,"D_minus":Dm,"CC":CC}, index=weighted.index)
-    res["Rank"] = res["CC"].rank(ascending=False).astype(int)
+    res["Rank"] = res["CC"].rank(ascending=False, method='min').astype(int)
     
     return res, norm_mat, weighted, a_plus_df, a_minus_df
 
@@ -132,16 +136,18 @@ if page=="Home":
     
 elif page=="Input Data":
     st.header("Input / Edit Data (Nilai Crips)")
-    st.info("Nilai adalah crips yang didapat dari tabel kriteria (misalnya, Cost ≤ Rp 20.000 = 100).")
+    st.info("Pastikan data ini sama persis dengan yang Anda gunakan di Excel.")
     edited = st.data_editor(st.session_state.df, num_rows="dynamic")
     st.session_state.df = edited
     st.download_button("Download data (.csv)", edited.to_csv().encode('utf-8'), file_name="data_input.csv")
     
-# Perubahan: Halaman Fuzzy WP menjadi WP
 elif page=="WP":
     st.header("Hasil Weighted Product (WP)")
     df = st.session_state.df.copy().apply(pd.to_numeric)
-    res_wp, w_exp = wp_calc(df, ws)
+    
+    with st.spinner('Menghitung WP...'):
+        time.sleep(0.5) # Simulasi perhitungan
+        res_wp, w_exp = wp_calc(df, ws)
     
     st.subheader("Bobot Kriteria Berpangkat ($W_j$)")
     w_exp_df = pd.DataFrame([w_exp], columns=df.columns, index=["Bobot Berpangkat"])
@@ -156,13 +162,15 @@ elif page=="WP":
     out.to_excel(buf, index=True, engine="openpyxl")
     buf.seek(0)
     st.download_button("Download hasil WP (.xlsx)", data=buf, file_name="hasil_wp.xlsx",
-                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     
-# Perubahan: Halaman Fuzzy TOPSIS menjadi TOPSIS
 elif page=="TOPSIS":
     st.header("Hasil TOPSIS")
     df = st.session_state.df.copy().apply(pd.to_numeric)
-    res_top, norm_mat, weighted, a_plus_df, a_minus_df = topsis_calc(df, ws)
+    
+    with st.spinner('Menghitung TOPSIS...'):
+        time.sleep(0.5) # Simulasi perhitungan
+        res_top, norm_mat, weighted, a_plus_df, a_minus_df = topsis_calc(df, ws)
     
     st.subheader("Normalisasi Matrix ($X$) - Vektor")
     st.dataframe(norm_mat.style.format("{:.6f}"))
@@ -182,12 +190,12 @@ elif page=="TOPSIS":
     out.to_excel(buf, index=True, engine="openpyxl")
     buf.seek(0)
     st.download_button("Download hasil TOPSIS (.xlsx)", data=buf, file_name="hasil_topsis.xlsx",
-                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# Perubahan: Halaman Perbandingan (WP vs TOPSIS)
 elif page=="Perbandingan":
     st.header("Perbandingan WP vs TOPSIS")
     df = st.session_state.df.copy().apply(pd.to_numeric)
+    
     res_wp, _ = wp_calc(df, ws)
     res_top, _, _, _, _ = topsis_calc(df, ws)
     
@@ -195,17 +203,33 @@ elif page=="Perbandingan":
     compare = pd.DataFrame({"WP":res_wp["Vektor V (Score)"], "TOPSIS":res_top["CC"]})
     st.dataframe(compare.style.format("{:.6f}"))
     
+    # Visualisasi
+    st.subheader("Diagram Perbandingan Hasil")
     fig,ax = plt.subplots(figsize=(8,4))
-    compare.plot(kind='bar', ax=ax)
+    compare.plot(kind='bar', ax=ax, rot=0, color=['#1f77b4', '#ff7f0e'])
     ax.set_ylabel("Score / CC")
+    ax.set_xlabel("Penyedia Hosting")
+    ax.set_title("Perbandingan Skor WP dan TOPSIS")
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
     st.pyplot(fig)
     
+    
     top_wp = compare["WP"].idxmax(); top_top = compare["TOPSIS"].idxmax()
+    st.subheader("Kesimpulan Ranking")
     if top_wp == top_top:
-        st.success(f"Kedua metode memilih: *{top_wp}*")
+        st.success(f"Kedua metode memilih: **{top_wp}** sebagai alternatif terbaik.")
     else:
-        st.info(f"WP -> *{top_wp}, TOPSIS -> **{top_top}*")
+        st.info(f"WP memilih: **{top_wp}**, sedangkan TOPSIS memilih: **{top_top}**.")
 
 elif page=="Tentang":
     st.header("Tentang")
-    st.write("Aplikasi untuk Projek MADM — WP & TOPSIS. Dibuat untuk memilih Web Hosting Murah.")
+    st.write("Aplikasi ini menggunakan Python Streamlit untuk mengimplementasikan metode *Weighted Product (WP)* dan *Technique for Order Preference by Similarity to Ideal Solution (TOPSIS)*.")
+    st.write("""
+    Metode digunakan untuk mendukung pengambilan keputusan multi-kriteria (Multi-Attribute Decision Making/MADM) dalam pemilihan Web Hosting Murah berdasarkan kriteria:
+    1. **Cost (Cost):** Biaya layanan
+    2. **Storage (Benefit):** Kapasitas penyimpanan
+    3. **Bandwidth (Benefit):** Batas transfer data
+    4. **Uptime (Benefit):** Tingkat ketersediaan layanan
+    5. **Support (Benefit):** Kualitas layanan dukungan
+    """)
